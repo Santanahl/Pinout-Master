@@ -589,3 +589,325 @@ function ConnectorFormModal({ onClose, onSave, existingCategories, initialData =
                       value={pin.id}
                       onChange={e => setPin(i, 'id', e.target.value)}
                       placeholder="1 or +"
+                      className={`${smallInputCls} font-mono`}
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <input
+                      type="text"
+                      value={pin.signal}
+                      onChange={e => setPin(i, 'signal', e.target.value)}
+                      placeholder="VBUS"
+                      className={smallInputCls}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <input
+                      type="text"
+                      value={pin.color}
+                      onChange={e => setPin(i, 'color', e.target.value)}
+                      placeholder="Red"
+                      className={smallInputCls}
+                    />
+                  </div>
+                  <div className="col-span-1 flex justify-center">
+                    <input
+                      type="color"
+                      value={pin.colorHex || '#6B7280'}
+                      onChange={e => setPin(i, 'colorHex', e.target.value)}
+                      className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
+                      title="Pick wire color"
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <input
+                      type="text"
+                      value={pin.description}
+                      onChange={e => setPin(i, 'description', e.target.value)}
+                      placeholder="Optional"
+                      className={smallInputCls}
+                    />
+                  </div>
+                  <div className="col-span-1 flex justify-center">
+                    <button
+                      onClick={() => removePin(i)}
+                      disabled={form.pins.length === 1}
+                      className="text-gray-600 hover:text-red-400 disabled:opacity-25 disabled:cursor-not-allowed transition-colors text-xl leading-none"
+                      title="Remove pin"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Notes */}
+          <section>
+            <label className="block text-sm text-gray-300 mb-1">Notes / Warnings</label>
+            <textarea
+              value={form.notes}
+              onChange={e => set('notes', e.target.value)}
+              placeholder="e.g. Red is always negative for ANSI TCs..."
+              rows={2}
+              className={`${inputCls} resize-none`}
+            />
+          </section>
+
+        </div>
+
+        {/* Modal Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-700 bg-gray-800/50">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg transition-colors shadow-lg shadow-blue-900/40"
+          >
+            {isEdit ? 'Save Changes' : 'Add Connector'}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+export default function App() {
+  const [connectors, setConnectors]             = useState(DEFAULT_CONNECTORS)
+  const [selectedId, setSelectedId]             = useState(DEFAULT_CONNECTORS[0].id)
+  const [search, setSearch]                     = useState('')
+  const [activeCategory, setCategory]           = useState('All')
+  const [showModal, setShowModal]               = useState(false)
+  const [editingConnector, setEditingConnector] = useState(null)
+  const [saveStatus, setSaveStatus]             = useState(null)
+
+  useEffect(() => {
+    fetch('/data.json')
+      .then(r => r.json())
+      .then(data => {
+        if (data.length > 0) {
+          setConnectors(data)
+          setSelectedId(data[0].id)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const categories = useMemo(() =>
+    ['All', ...new Set(connectors.map(c => c.category).sort())],
+    [connectors]
+  )
+
+  const existingCategories = useMemo(() =>
+    [...new Set(connectors.map(c => c.category))].sort(),
+    [connectors]
+  )
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    return connectors.filter(c => {
+      const matchSearch = !q ||
+        c.name.toLowerCase().includes(q) ||
+        c.category.toLowerCase().includes(q) ||
+        c.description?.toLowerCase().includes(q) ||
+        c.standard?.toLowerCase().includes(q) ||
+        c.pins.some(p =>
+          p.signal.toLowerCase().includes(q) ||
+          p.color?.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q)
+        )
+      const matchCat = activeCategory === 'All' || c.category === activeCategory
+      return matchSearch && matchCat
+    })
+  }, [connectors, search, activeCategory])
+
+  const selectedConnector = connectors.find(c => c.id === selectedId)
+
+  const saveToGitHub = async (updatedConnectors) => {
+    setSaveStatus('saving')
+    try {
+      const res = await fetch('/api/update-connectors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectors: updatedConnectors }),
+      })
+      if (!res.ok) throw new Error('API error')
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus(null), 3000)
+    } catch (err) {
+      console.error('Failed to save to GitHub:', err)
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus(null), 5000)
+    }
+  }
+
+  const handleAdd = async (form) => {
+    const newConnector      = { ...form, id: generateId(), userAdded: true }
+    const updatedConnectors = [...connectors, newConnector]
+    setConnectors(updatedConnectors)
+    setSelectedId(newConnector.id)
+    setShowModal(false)
+    await saveToGitHub(updatedConnectors)
+  }
+
+  const handleEditSave = async (form) => {
+    const updatedConnector  = { ...editingConnector, ...form }
+    const updatedConnectors = connectors.map(c =>
+      c.id === editingConnector.id ? updatedConnector : c
+    )
+    setConnectors(updatedConnectors)
+    setEditingConnector(null)
+    await saveToGitHub(updatedConnectors)
+  }
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this connector?')) return
+    const updatedConnectors = connectors.filter(c => c.id !== id)
+    setConnectors(updatedConnectors)
+    setSelectedId(updatedConnectors[0]?.id || null)
+    await saveToGitHub(updatedConnectors)
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+
+      {/* Header */}
+      <header className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex-shrink-0">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+              🔌 <span>PinOut DB</span>
+            </h1>
+            <p className="text-gray-500 text-xs mt-0.5">
+              Connector & Sensor Pinout Reference · {connectors.length} connectors
+            </p>
+          </div>
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 shadow-lg shadow-blue-900/40"
+          >
+            + Add Connector
+          </button>
+        </div>
+      </header>
+
+      <div className="flex flex-1 max-w-7xl mx-auto w-full px-6 py-6 gap-6 overflow-hidden">
+
+        {/* Sidebar */}
+        <aside className="w-64 flex-shrink-0 flex flex-col gap-4 min-h-0">
+
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">🔍</span>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search connectors, pins..."
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-8 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 text-sm transition-colors"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors text-xs"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategory(cat)}
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                  activeCategory === cat
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-0.5 pr-1">
+            {filtered.length === 0 ? (
+              <div className="text-center py-8 text-gray-600">
+                <p className="text-2xl mb-2">🔍</p>
+                <p className="text-sm">No connectors found</p>
+              </div>
+            ) : (
+              filtered.map(c => (
+                <ConnectorListItem
+                  key={c.id}
+                  connector={c}
+                  isSelected={c.id === selectedId}
+                  onClick={() => setSelectedId(c.id)}
+                />
+              ))
+            )}
+          </div>
+
+        </aside>
+
+        {/* Main Detail Panel */}
+        <main className="flex-1 min-w-0 overflow-y-auto">
+          {selectedConnector ? (
+            <ConnectorDetail
+              connector={selectedConnector}
+              onDelete={handleDelete}
+              onEdit={setEditingConnector}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-gray-600">
+              <p className="text-6xl mb-4">🔌</p>
+              <p className="text-lg font-medium">Select a connector</p>
+              <p className="text-sm">or search above</p>
+            </div>
+          )}
+        </main>
+
+      </div>
+
+      {/* Save Status Toast */}
+      {saveStatus && (
+        <div className={`fixed bottom-5 right-5 px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl z-50 transition-all ${
+          saveStatus === 'saving' ? 'bg-gray-700 text-gray-200' :
+          saveStatus === 'saved'  ? 'bg-emerald-800 text-emerald-100' :
+                                    'bg-red-900 text-red-200'
+        }`}>
+          {saveStatus === 'saving' ? '⏳ Saving to GitHub...' :
+           saveStatus === 'saved'  ? '✓ Saved to GitHub' :
+                                     '⚠️ Save failed — check console'}
+        </div>
+      )}
+
+      {/* Add Modal */}
+      {showModal && (
+        <ConnectorFormModal
+          onClose={() => setShowModal(false)}
+          onSave={handleAdd}
+          existingCategories={existingCategories}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingConnector && (
+        <ConnectorFormModal
+          onClose={() => setEditingConnector(null)}
+          onSave={handleEditSave}
+          existingCategories={existingCategories}
+          initialData={editingConnector}
+        />
+      )}
+
+    </div>
+  )
+}
