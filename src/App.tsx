@@ -274,12 +274,15 @@ function ConnectorDetail({ connector, onDelete, onEdit }) {
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              
+              <span className="bg-blue-900/50 text-blue-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-blue-800">
+                {connector.category}
+              </span>
+            </div>
             <h2 className="text-2xl font-bold text-white">{connector.name}</h2>
             <p className="text-gray-400 mt-1 text-sm">{connector.description}</p>
           </div>
 
-          {/* Action Buttons — Edit is always visible, Delete only for custom */}
+          {/* Action Buttons */}
           <div className="flex items-center gap-3 flex-shrink-0 mt-1">
             <button
               onClick={() => onEdit(connector)}
@@ -350,6 +353,7 @@ function ConnectorDetail({ connector, onDelete, onEdit }) {
     </div>
   )
 }
+
 
 // ================================================================
 // CONNECTOR LIST ITEM
