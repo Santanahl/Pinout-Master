@@ -276,12 +276,7 @@ function ConnectorDetail({ connector, onDelete, onEdit }) {
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="bg-blue-900/50 text-blue-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-blue-800">
                 {connector.category}
-              </span>
-              {connector.userAdded && (
-                <span className="bg-emerald-900/50 text-emerald-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-800">
-                  ✦ Custom
-                </span>
-              )}
+              
             </div>
             <h2 className="text-2xl font-bold text-white">{connector.name}</h2>
             <p className="text-gray-400 mt-1 text-sm">{connector.description}</p>
