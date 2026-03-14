@@ -668,18 +668,46 @@ export default function App() {
 
   const selectedConnector = connectors.find(c => c.id === selectedId)
 
-  const handleAdd = (form) => {
+  const handleAdd = async (form) => {
     const newConnector = { ...form, id: generateId(), userAdded: true }
-    setConnectors(prev => [...prev, newConnector])
+    const updatedConnectors = [...connectors, newConnector]
+  
+    // Update local state immediately (instant UI update)
+    setConnectors(updatedConnectors)
     setSelectedId(newConnector.id)
     setShowModal(false)
+  
+    // Save to GitHub in the background
+    try {
+      await fetch('/api/update-connectors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectors: updatedConnectors }),
+      })
+    } catch (err) {
+      console.error('Failed to save to GitHub:', err)
+    }
   }
+  
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (!confirm('Delete this connector?')) return
-    setConnectors(prev => prev.filter(c => c.id !== id))
-    setSelectedId(filtered.find(c => c.id !== id)?.id || DEFAULT_CONNECTORS[0].id)
+    const updatedConnectors = connectors.filter(c => c.id !== id)
+  
+    setConnectors(updatedConnectors)
+    setSelectedId(updatedConnectors[0]?.id || null)
+  
+    try {
+      await fetch('/api/update-connectors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectors: updatedConnectors }),
+      })
+    } catch (err) {
+      console.error('Failed to save to GitHub:', err)
+    }
   }
+  
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
