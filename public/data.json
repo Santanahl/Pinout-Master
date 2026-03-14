@@ -503,24 +503,5 @@
     ],
     "notes": "DTE pinout. DCE (modem) swaps pins 2↔3 and 7↔8. Null modem crosses TXD/RXD and RTS/CTS.",
     "userAdded": false
-  },
-  {
-    "name": "TEST",
-    "category": "TEST",
-    "description": "",
-    "standard": "",
-    "connectorType": "",
-    "notes": "",
-    "pins": [
-      {
-        "id": "1",
-        "signal": "HHG",
-        "color": "h",
-        "colorHex": "#6B7280",
-        "description": ""
-      }
-    ],
-    "id": "mmqmrsmdec7d0d5ys9k",
-    "userAdded": true
   }
 ]
